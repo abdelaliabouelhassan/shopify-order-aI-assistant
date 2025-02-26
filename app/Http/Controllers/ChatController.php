@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Services\OpenAIService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -92,6 +93,8 @@ class ChatController extends Controller
             'content' => 'required|string',
         ]);
 
+        $answer = (new OpenAIService())->askAboutAllOrders($request->content);
+
         $conversation = Conversation::where('id', $conversationId)
             ->where('user_id', Auth::id())
             ->firstOrFail();
@@ -107,7 +110,7 @@ class ChatController extends Controller
         $aiResponse = Message::create([
             'conversation_id' => $conversationId,
             'sender_type' => 'ai',
-            'content' => 'This is AI response',
+            'content' => $answer,
         ]);
 
         // Update conversation timestamp

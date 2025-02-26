@@ -1,4 +1,5 @@
 <template>
+  <Head :title="title" />
   <div class="flex flex-col h-screen bg-gray-50">
     <!-- Header -->
     <header class="bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
@@ -302,7 +303,13 @@
 <script setup>
 import { ref, computed, nextTick, onMounted } from "vue";
 import axios from "axios";
+import { Head } from "@inertiajs/vue3";
 
+defineProps({
+  title: {
+    type: String,
+  },
+});
 // State
 const conversations = ref([]);
 const currentConversationId = ref(null);

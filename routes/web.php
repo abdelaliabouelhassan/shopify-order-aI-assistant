@@ -12,12 +12,9 @@ use Inertia\Inertia;
 Route::middleware('auth')->group(function () {
     Route::get('/', function () {
         return Inertia::render('Welcome', [
-            'canLogin' => Route::has('login'),
-            'canRegister' => Route::has('register'),
-            'laravelVersion' => Application::VERSION,
-            'phpVersion' => PHP_VERSION,
+            'title' => 'AI ASSISTANCE',
         ]);
-    });
+    })->name('home');
 
     Route::get('/conversations', [ChatController::class, 'getConversations']);
     Route::get('/conversations/{id}', [ChatController::class, 'getConversation']);
@@ -33,19 +30,5 @@ Route::get('/testing', function () {
     return $orders = (new ShopifyService())->getInventory();
 });
 
-Route::get('/orders', [OrderController::class, 'index']);
-Route::post('/ask', [OrderController::class, 'ask'])->name('ask');
-
-
-
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
-
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
 
 require __DIR__ . '/auth.php';
