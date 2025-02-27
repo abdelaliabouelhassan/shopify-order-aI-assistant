@@ -4,6 +4,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProfileController;
 use App\Services\ShopifyService;
+use App\Services\ShopifyToOpenAIService;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -27,6 +28,7 @@ Route::middleware('auth')->group(function () {
 
 
 Route::get('/testing', function () {
+    return  $orders = (new ShopifyToOpenAIService())->processAllOrders();
     return $orders = (new ShopifyService())->getInventory();
 });
 

@@ -93,7 +93,7 @@ class ChatController extends Controller
             'content' => 'required|string',
         ]);
 
-        $answer = (new OpenAIService())->askAboutAllOrders($request->content);
+        $answer = (new OpenAIService())->askAboutOrders($request->content);
 
         $conversation = Conversation::where('id', $conversationId)
             ->where('user_id', Auth::id())
