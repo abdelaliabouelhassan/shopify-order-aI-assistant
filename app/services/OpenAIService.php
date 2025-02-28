@@ -101,8 +101,8 @@ class OpenAIService
 
         $schema = "
         Tables:
-        - shopify_orders (id, shopify_id, order_number, email, created_at, updated_at, financial_status, fulfillment_status, total_price, total_tax, currency, tags, customer_data, shipping_address, billing_address)
-        - shopify_order_items (id, order_id, shopify_line_item_id, product_id, variant_id, title, quantity, price, sku)
+        - shopify_orders (id, shopify_id, order_number, email, created_at, updated_at, financial_status, fulfillment_status, total_price, total_tax, currency, tags, province, province_code, city, zip, address1  customer_data, shipping_address, billing_address)
+        - shopify_order_items (id, order_id, shopify_line_item_id, product_id, variant_id, vendor, title, quantity, price, sku)
         - shopify_inventory_items (id, inventory_item_id, sku, cost, tracked, requires_shipping, variant_id)
         - shopify_inventory_levels (id, inventory_item_id, available, updated_at)
         

@@ -63,7 +63,7 @@ class FetchShopifyOrders extends Command
     private function syncRecentOrders(ShopifyService $shopifyService)
     {
         $this->info('Syncing recent orders...');
-        $result = $shopifyService->syncRecentOrders(7); // Last 7 days
+        $result = $shopifyService->syncRecentOrders(2); // Last 7 days
         $this->outputResult('Recent orders', $result);
     }
 

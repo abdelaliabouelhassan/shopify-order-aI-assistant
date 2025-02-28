@@ -148,6 +148,12 @@ class ShopifyService
                 'total_tax' => $orderData['total_tax'] ?? 0,
                 'currency' => $orderData['currency'] ?? 'USD',
                 'tags' => $orderData['tags'] ?? null,
+                // Add the new address fields you requested
+                'province' => $orderData['shipping_address']['province'] ?? null,
+                'province_code' => $orderData['shipping_address']['province_code'] ?? null,
+                'city' => $orderData['shipping_address']['city'] ?? null,
+                'zip' => $orderData['shipping_address']['zip'] ?? null,
+                'address1' => $orderData['shipping_address']['address1'] ?? null,
                 'customer_data' => json_encode($orderData['customer'] ?? []),
                 'shipping_address' => json_encode($orderData['shipping_address'] ?? []),
                 'billing_address' => json_encode($orderData['billing_address'] ?? []),
@@ -184,6 +190,7 @@ class ShopifyService
                         'quantity' => $item['quantity'] ?? 0,
                         'price' => $item['price'] ?? 0,
                         'sku' => $item['sku'] ?? null,
+                        'vendor' => $item['vendor'] ?? null, // Added vendor to each line item
                         'raw_data' => json_encode($item),
                     ]);
                 }
@@ -194,7 +201,7 @@ class ShopifyService
     /**
      * Sync recent orders (for regular updates)
      */
-    public function syncRecentOrders($days = 7)
+    public function syncRecentOrders($days = 2)
     {
         $url = "{$this->baseUrl}/orders.json";
         $createdAtMin = now()->subDays($days)->toIso8601String();
