@@ -173,7 +173,16 @@
                     : 'bg-white text-gray-700'
                 "
               >
-                <p>{{ message.content }}</p>
+                <MarkdownRenderer :content="message.content" />
+                <!-- <p>{{ message.content }}</p> -->
+              </div>
+            </div>
+
+            <div class="flex items-start justify-end" v-if="isTyping">
+              <div
+                class="px-6 py-4 rounded-lg shadow-sm max-w-xl bg-indigo-600 text-white"
+              >
+                <p>{{ newMessageContainer }}</p>
               </div>
             </div>
 
@@ -304,6 +313,7 @@
 import { ref, computed, nextTick, onMounted } from "vue";
 import axios from "axios";
 import { Head } from "@inertiajs/vue3";
+import MarkdownRenderer from "@/Components/MarkdownRenderer.vue";
 
 defineProps({
   title: {
@@ -319,7 +329,7 @@ const isTyping = ref(false);
 const showHistory = ref(true);
 const showClearConfirm = ref(false);
 const chatContainer = ref(null);
-
+const newMessageContainer = ref("");
 // API base URL - adjust if needed
 
 // Fetch all conversations on component mount
@@ -327,7 +337,7 @@ const fetchConversations = async () => {
   try {
     const response = await axios.get(`/conversations`);
     conversations.value = response.data;
-
+    scrollToBottom();
     // If there are conversations, load the first one
     if (conversations.value.length > 0) {
       currentConversationId.value = conversations.value[0].id;
@@ -375,6 +385,7 @@ const startNewChat = async () => {
 
 // Send a message
 const sendMessage = async () => {
+  scrollToBottom();
   if (!newMessage.value.trim() || !currentConversationId.value) return;
 
   try {
@@ -382,6 +393,7 @@ const sendMessage = async () => {
     isTyping.value = true;
 
     const messageContent = newMessage.value;
+    newMessageContainer.value = newMessage.value;
     newMessage.value = ""; // Clear input field
 
     const response = await axios.post(
@@ -514,12 +526,15 @@ const formatDate = (dateString) => {
 // Scroll chat container to bottom
 const scrollToBottom = () => {
   if (chatContainer.value) {
-    chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+    setTimeout(() => {
+      chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+    }, 100);
   }
 };
 
 // Lifecycle hooks
 onMounted(() => {
   fetchConversations();
+  scrollToBottom();
 });
 </script>
