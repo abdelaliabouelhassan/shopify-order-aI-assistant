@@ -3,6 +3,7 @@
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProfileController;
+use App\Services\ShopifyOrderAnalyst;
 use App\Services\ShopifyService;
 use App\Services\ShopifyToOpenAIService;
 use Illuminate\Foundation\Application;
@@ -28,8 +29,9 @@ Route::middleware('auth')->group(function () {
 
 
 Route::get('/testing', function () {
-    return  $orders = (new ShopifyToOpenAIService())->processAllOrders();
-    return $orders = (new ShopifyService())->getInventory();
+    $analyst = new ShopifyOrderAnalyst();
+    $response =  $analyst->ask("how many 'use' you it been used in the php file we gived you ? ");
+    return $response;
 });
 
 
