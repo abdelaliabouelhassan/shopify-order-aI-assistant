@@ -182,7 +182,7 @@ class ShopifyOrderAnalyst
             'Authorization' => "Bearer {$this->apiKey}",
             'Content-Type' => 'application/json',
             'OpenAI-Beta' => 'assistants=v2'
-        ])->put("{$this->baseUrl}/assistants/{$this->assistantId}", [
+        ])->post("{$this->baseUrl}/assistants/{$this->assistantId}", [
             'tools' => [
                 ['type' => 'code_interpreter']
             ],

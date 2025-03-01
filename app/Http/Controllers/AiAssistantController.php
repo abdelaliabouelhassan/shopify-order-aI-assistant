@@ -99,148 +99,6 @@ class AiAssistantController extends Controller
     }
 
 
-    // public function import()
-    // {
-    //     $orders = ShopifyOrder::with(['orderItems.inventoryItem.inventoryLevel'])->limit(10)->get();
-
-    //     $jsonlContent = '';
-    //     foreach ($orders as $order) {
-    //         $orderData = [
-    //             'order_id' => $order->shopify_id,
-    //             'order_number' => $order->order_number,
-    //             'created_at' => $order->created_at,
-    //             'updated_at' => $order->updated_at,
-    //             'email' => $order->email,
-    //             'financial_status' => $order->financial_status,
-    //             'fulfillment_status' => $order->fulfillment_status,
-    //             'total_price' => (float)$order->total_price,
-    //             'total_tax' => (float)$order->total_tax,
-    //             'currency' => $order->currency,
-    //             'tags' => $order->tags,
-    //             'items' => []
-    //         ];
-
-    //         foreach ($order->orderItems as $item) {
-    //             // Get inventory item - either by variant_id (already loaded) or by SKU if needed
-    //             $inventoryItem = $item->inventoryItem;
-
-    //             // If no inventory item found by variant_id and SKU exists, try looking it up by SKU
-    //             if (!$inventoryItem && $item->sku) {
-    //                 $inventoryItem = ShopifyInventoryItem::where('sku', $item->sku)->first();
-    //             }
-
-    //             $inventoryData = null;
-    //             if ($inventoryItem) {
-    //                 $inventoryLevel = $inventoryItem->inventoryLevel;
-    //                 $inventoryData = [
-    //                     'inventory_item_id' => $inventoryItem->inventory_item_id,
-    //                     'cost' => (float)$inventoryItem->cost,
-    //                     'tracked' => (bool)$inventoryItem->tracked,
-    //                     'requires_shipping' => (bool)$inventoryItem->requires_shipping,
-    //                     'available' => $inventoryLevel ? (int)$inventoryLevel->available : 0
-    //                 ];
-    //             }
-
-    //             $orderData['items'][] = [
-    //                 'line_item_id' => $item->shopify_line_item_id,
-    //                 'product_id' => $item->product_id,
-    //                 'variant_id' => $item->variant_id,
-    //                 'title' => $item->title,
-    //                 'quantity' => (int)$item->quantity,
-    //                 'price' => (float)$item->price,
-    //                 'sku' => $item->sku,
-    //                 'inventory' => $inventoryData,
-    //                 'vendor' => $item->vendor,
-    //             ];
-    //         }
-
-    //         $jsonlContent .= json_encode($orderData) . "\n";
-    //     }
-
-    //     file_put_contents('shopify_data.json', $jsonlContent);
-    // }
-
-
-    // public function import()
-    // {
-    //     $file = fopen('shopify_data.json', 'w');
-    //     fwrite($file, '[');
-    //     $firstItem = true;
-
-    //     ShopifyOrder::chunk(100, function ($orders) use ($file, &$firstItem) {
-    //         foreach ($orders as $order) {
-    //             $order->load('orderItems.inventoryItem.inventoryLevel');
-
-    //             // Build order data structure
-    //             $orderData = [
-    //                 'order_id' => $order->shopify_id,
-    //                 'order_number' => $order->order_number,
-    //                 'created_at' => $order->created_at->toISOString(),
-    //                 'updated_at' => $order->updated_at->toISOString(),
-    //                 'email' => $order->email,
-    //                 'financial_status' => $order->financial_status,
-    //                 'fulfillment_status' => $order->fulfillment_status,
-    //                 'total_price' => (float)$order->total_price,
-    //                 'total_tax' => (float)$order->total_tax,
-    //                 'currency' => $order->currency,
-    //                 'tags' => $order->tags ?: null, // Convert empty tags to null
-    //                 'items' => []
-    //             ];
-
-    //             // Process order items
-    //             foreach ($order->orderItems as $item) {
-    //                 $itemData = [
-    //                     'line_item_id' => $item->shopify_line_item_id,
-    //                     'product_id' => $item->product_id,
-    //                     'variant_id' => $item->variant_id,
-    //                     'title' => $item->title,
-    //                     'quantity' => (int)$item->quantity,
-    //                     'price' => (float)$item->price,
-    //                     'sku' => $item->sku,
-    //                     'vendor' => $item->vendor,
-    //                     'inventory' => null
-    //                 ];
-
-    //                 if ($item->inventoryItem) {
-    //                     $inventoryLevel = $item->inventoryItem->inventoryLevel;
-    //                     $itemData['inventory'] = [
-    //                         'inventory_item_id' => $item->inventoryItem->inventory_item_id,
-    //                         'cost' => (float)$item->inventoryItem->cost,
-    //                         'tracked' => (bool)$item->inventoryItem->tracked,
-    //                         'requires_shipping' => (bool)$item->inventoryItem->requires_shipping,
-    //                         'available' => $inventoryLevel ? (int)$inventoryLevel->available : 0
-    //                     ];
-    //                 }
-
-    //                 $orderData['items'][] = $itemData;
-    //             }
-
-    //             // Remove null values to reduce JSON size
-    //             $orderData = array_filter($orderData, function ($value) {
-    //                 return $value !== null;
-    //             });
-
-    //             // Stream JSON to file
-    //             $json = json_encode($orderData, JSON_UNESCAPED_SLASHES | JSON_NUMERIC_CHECK);
-
-    //             if ($firstItem) {
-    //                 $firstItem = false;
-    //             } else {
-    //                 fwrite($file, ',');
-    //             }
-
-    //             fwrite($file, $json);
-    //             $order->unsetRelation('orderItems');
-    //         }
-
-    //         if (function_exists('gc_collect_cycles')) {
-    //             gc_collect_cycles();
-    //         }
-    //     });
-
-    //     fwrite($file, ']');
-    //     fclose($file);
-    // }
 
 
     public function export()
@@ -299,17 +157,29 @@ class AiAssistantController extends Controller
                 }
 
                 // Process each line item
+                $isFirstItem = true;
                 foreach ($order->orderItems as $item) {
+                    // For the first item, include total price and tax
+                    // For subsequent items, make them empty
+                    $totalPrice = $isFirstItem ? (float)$order->total_price : '';
+                    $totalTax = $isFirstItem ? (float)$order->total_tax : '';
+
                     // Add line item details to order row
-                    $lineItemData = array_merge($baseOrderData, [
-                        $item->title,
-                        (float)$item->price,
-                        $item->sku,
-                        (int)$item->quantity,
-                        $item->vendor
-                    ]);
+                    $lineItemData = array_merge(
+                        array_slice($baseOrderData, 0, 6), // Order details before total_price
+                        [$totalPrice, $totalTax], // Include price and tax only for first item
+                        array_slice($baseOrderData, 8), // Rest of order details after total_tax
+                        [
+                            $item->title,
+                            (float)$item->price,
+                            $item->sku,
+                            (int)$item->quantity,
+                            $item->vendor
+                        ]
+                    );
 
                     fputcsv($ordersFile, $lineItemData);
+                    $isFirstItem = false;
                 }
 
                 // Free up memory
