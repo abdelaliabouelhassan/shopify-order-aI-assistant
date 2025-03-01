@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Exception;
 
 class ShopifyOrderAnalyst
@@ -12,22 +13,22 @@ class ShopifyOrderAnalyst
     protected $assistantId;
     protected $fileId;
     protected $threadId;
-    protected $timeout = 90000; // Increased timeout in seconds
+    protected $timeout = 90000;
     protected $apiKey;
     protected $baseUrl = 'https://api.openai.com/v1';
     protected $cachePrefix = 'shopify_analyst_';
 
     /**
-     * Initialize the service with the existing CSV file
+     * Initialize the service with optional parameters
      *
-     * @param string $csvPath Path to the CSV file (defaults to the public file)
+     * 
+     * @param string|null $fileId Existing file ID from database
+     * @param string|null $assistantId Existing assistant ID from database
      * @param int $timeout Request timeout in seconds
      * @return self
      */
-    public function __construct(string $csvPath = null, int $timeout = 120)
+    public function __construct(string $fileId = null, string $assistantId = null, int $timeout = 120)
     {
-        // Use the provided path or default to your public file
-        $csvPath = $csvPath ?? public_path('index.php');
         $this->timeout = $timeout;
         $this->apiKey = config('openai.api_key');
 
@@ -35,47 +36,292 @@ class ShopifyOrderAnalyst
             throw new Exception("OpenAI API key not configured");
         }
 
-        // Try to restore from cache if exists
-        $this->restoreFromCache();
+        // If file ID and assistant ID are provided, use them
+        if ($fileId && $assistantId) {
+            $this->fileId = $fileId;
+            $this->assistantId = $assistantId;
+            Log::info("Using provided file ID and assistant ID");
+        } else {
+            $this->loadFromDatabase();
 
-        // Only proceed with setup if not restored from cache
-        if (empty($this->assistantId) || empty($this->fileId)) {
-            $this->setupAnalyst($csvPath);
+            // If still not loaded, try cache
+            if (empty($this->fileId) || empty($this->assistantId)) {
+                $this->restoreFromCache();
+            }
         }
+
+        // Create a thread if none exists
+        $this->createThreadIfNeeded();
     }
 
     /**
-     * Set up the analyst by uploading file and creating assistant
+     * Load file ID and assistant ID from database
      */
-    protected function setupAnalyst(string $csvPath)
+    protected function loadFromDatabase()
     {
         try {
-            if (!file_exists($csvPath)) {
-                throw new Exception("CSV file not found at: {$csvPath}");
+            $record = DB::table('ai_assistants')
+                ->where('type', 'shopify_analyst')
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if ($record) {
+                $this->fileId = $record->file_id;
+                $this->assistantId = $record->assistant_id;
+                Log::info("Loaded analyst data from database ");
+                return true;
             }
-
-            // Try to use a more reliable method for file upload
-            $this->fileId = $this->uploadFileWithRetry($csvPath);
-            // $this->fileId = 'asst_YkS7Y6DECaL14KQsoJM072DG';
-            Log::info('file id is ', [$this->fileId]);
-            if (empty($this->fileId)) {
-                throw new Exception("File upload failed after multiple attempts");
-            }
-
-            $this->createAssistant();
-
-            // Save to cache
-            $this->saveToCache();
         } catch (Exception $e) {
-            Log::error('ShopifyOrderAnalyst initialization error: ' . $e->getMessage());
+            Log::error("Error loading from database: " . $e->getMessage());
+        }
+
+        return false;
+    }
+
+    /**
+     * Save file ID and assistant ID to database
+     * Updates existing record if one exists, otherwise creates a new one
+     */
+    protected function saveToDatabase()
+    {
+        if (empty($this->fileId) || empty($this->assistantId)) {
+            return false;
+        }
+
+        try {
+            // Check if a record exists
+            $existingRecord = DB::table('ai_assistants')
+                ->where('type', 'shopify_analyst')
+                ->first();
+
+            if ($existingRecord) {
+                // Update the existing record
+                DB::table('ai_assistants')
+                    ->where('id', $existingRecord->id)
+                    ->update([
+                        'file_id' => $this->fileId,
+                        'assistant_id' => $this->assistantId,
+                        'updated_at' => now(),
+                    ]);
+                Log::info("Updated existing analyst data in database");
+            } else {
+                // Insert a new record if none exists
+                DB::table('ai_assistants')->insert([
+                    'file_id' => $this->fileId,
+                    'assistant_id' => $this->assistantId,
+                    'type' => 'shopify_analyst',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                Log::info("Saved new analyst data to database");
+            }
+
+            return true;
+        } catch (Exception $e) {
+            Log::error("Error saving to database: " . $e->getMessage());
+        }
+
+        return false;
+    }
+
+    /**
+     * Upload new files (orders.csv and products.csv) and update the assistant
+     *
+     * @param array $filePaths Array of paths to CSV files
+     * @param bool $createNewAssistant Whether to create a new assistant or update existing
+     * @return bool Success status
+     */
+    public function updateKnowledge(array $filePaths, bool $createNewAssistant = false)
+    {
+        foreach ($filePaths as $filePath) {
+            if (!file_exists($filePath)) {
+                throw new Exception("File not found at: {$filePath}");
+            }
+        }
+
+        try {
+            // Upload all files
+            $fileIds = [];
+            foreach ($filePaths as $filePath) {
+                $fileId = $this->uploadFileWithRetry($filePath);
+                if (empty($fileId)) {
+                    throw new Exception("File upload failed for {$filePath} after multiple attempts");
+                }
+                $fileIds[] = $fileId;
+            }
+
+            // Keep track of the first file ID for reference
+            $this->fileId = $fileIds[0];
+
+            // If we want a new assistant or don't have an existing one
+            if ($createNewAssistant || empty($this->assistantId)) {
+                // Create a new assistant with these files
+                $this->createAssistant($fileIds);
+            } else {
+                // Update the existing assistant with the new files
+                $this->updateAssistantWithFiles($fileIds);
+            }
+
+            // Save the updated IDs
+            $this->saveToCache();
+            $this->saveToDatabase();
+
+            return true;
+        } catch (Exception $e) {
+            Log::error("Update knowledge error: " . $e->getMessage());
             throw $e;
         }
     }
 
     /**
+     * Update existing assistant with new files
+     */
+    protected function updateAssistantWithFiles(array $fileIds)
+    {
+        $response = Http::withHeaders([
+            'Authorization' => "Bearer {$this->apiKey}",
+            'Content-Type' => 'application/json',
+            'OpenAI-Beta' => 'assistants=v2'
+        ])->put("{$this->baseUrl}/assistants/{$this->assistantId}", [
+            'tools' => [
+                ['type' => 'code_interpreter']
+            ],
+            'tool_resources' => [
+                'code_interpreter' => [
+                    'file_ids' => $fileIds
+                ]
+            ]
+        ]);
+
+        if ($response->failed()) {
+            throw new Exception("Assistant update failed: " . $response->body());
+        }
+
+        Log::info("Assistant updated successfully with new files");
+    }
+
+    /**
+     * Set up a new assistant with files
+     *
+     * @param array $filePaths Array of paths to CSV files
+     */
+    public function setupNewAssistant(array $filePaths)
+    {
+        try {
+            foreach ($filePaths as $filePath) {
+                if (!file_exists($filePath)) {
+                    throw new Exception("File not found at: {$filePath}");
+                }
+            }
+
+            // Upload all files
+            $fileIds = [];
+            foreach ($filePaths as $filePath) {
+                $fileId = $this->uploadFileWithRetry($filePath);
+                if (empty($fileId)) {
+                    throw new Exception("File upload failed for {$filePath} after multiple attempts");
+                }
+                $fileIds[] = $fileId;
+            }
+
+            // Keep the first file ID for reference
+            $this->fileId = $fileIds[0];
+
+            // Create the assistant with all files
+            $this->createAssistant($fileIds);
+
+            // Create a thread
+            $this->createThreadIfNeeded();
+
+            // Save the IDs
+            $this->saveToCache();
+            $this->saveToDatabase();
+
+            return true;
+        } catch (Exception $e) {
+            Log::error("Setup new assistant error: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Create a thread if none exists
+     */
+    protected function createThreadIfNeeded()
+    {
+        if (empty($this->threadId)) {
+            try {
+                $response = Http::withHeaders([
+                    'Authorization' => "Bearer {$this->apiKey}",
+                    'Content-Type' => 'application/json',
+                    'OpenAI-Beta' => 'assistants=v2',
+                ])->post("{$this->baseUrl}/threads");
+
+                if ($response->failed()) {
+                    throw new Exception("Failed to create thread: " . $response->body());
+                }
+
+                $this->threadId = $response->json('id');
+                $this->saveToCache();
+            } catch (Exception $e) {
+                Log::error("Error creating thread: " . $e->getMessage());
+                throw new Exception("Failed to create thread: " . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Create an AI assistant with uploaded files
+     * 
+     * @param array $fileIds Array of file IDs to attach to the assistant
+     */
+    protected function createAssistant(array $fileIds = [])
+    {
+        if (empty($fileIds)) {
+            throw new Exception("No files uploaded. File upload failed.");
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => "Bearer {$this->apiKey}",
+                'Content-Type' => 'application/json',
+                'OpenAI-Beta' => 'assistants=v2'
+            ])->post("{$this->baseUrl}/assistants", [
+                'name' => 'Shopify Order Analyst',
+                'instructions' => "You are an expert in analyzing Shopify data. You analyze data present in CSV files using code interpreter. 
+                Use pandas to read the CSV files. The files contain order data and product inventory data.
+                Format your responses with markdown tables, charts, or bullet points.
+                Always provide actionable insights. For example:
+                - Highlight low-stock items and suggest restocking.
+                - Identify trending products.
+                - Flag delayed orders.
+                When creating visualizations, use appropriate charts for the data.",
+                'model' => 'gpt-4-turbo',
+                'tools' => [
+                    ['type' => 'code_interpreter']
+                ],
+                'tool_resources' => [
+                    'code_interpreter' => [
+                        'file_ids' => $fileIds
+                    ]
+                ]
+            ]);
+
+            if ($response->failed()) {
+                throw new Exception("Assistant creation failed: " . $response->body());
+            }
+
+            $this->assistantId = $response->json('id');
+            Log::info("Assistant created successfully with ID: {$this->assistantId}");
+        } catch (Exception $e) {
+            Log::error("Error creating assistant: " . $e->getMessage());
+            throw new Exception("Failed to create assistant: " . $e->getMessage());
+        }
+    }
+    /**
      * Upload file with retry logic and different methods
      */
-    protected function uploadFileWithRetry(string $filePath, $maxAttempts = 3)
+    protected function uploadFileWithRetry(string $filePath, $maxAttempts = 6)
     {
         $attempts = 0;
         $methods = ['curl', 'http', 'curl_chunked'];
@@ -94,7 +340,7 @@ class ShopifyOrderAnalyst
                         return $this->uploadWithChunkedCurl($filePath);
                 }
             } catch (Exception $e) {
-                Log::warning("Upload attempt  failed with method {$method}: " . $e->getMessage());
+                Log::warning("Upload attempt failed with method {$method}: " . $e->getMessage());
             }
 
             $attempts++;
@@ -243,69 +489,6 @@ class ShopifyOrderAnalyst
     }
 
     /**
-     * Create an AI assistant with the uploaded file
-     */
-    protected function createAssistant()
-    {
-        if (empty($this->fileId)) {
-            throw new Exception("No file uploaded. File upload failed.");
-        }
-
-        try {
-            // First create a vector store with the uploaded file
-            $vectorStoreId = $this->createVectorStoreWithFile();
-
-            $response = Http::withHeaders([
-                'Authorization' => "Bearer {$this->apiKey}",
-                'Content-Type' => 'application/json',
-                'OpenAI-Beta' => 'assistants=v2'
-            ])->post("{$this->baseUrl}/assistants", [
-                'name' => 'Shopify Order Analyst',
-                'instructions' => 'You are php expert answer any questions the users gived you with provided php file',
-                'model' => 'gpt-4o',
-                'tools' => [
-                    ['type' => 'code_interpreter'],
-                    ['type' => 'file_search']
-                ],
-                'tool_resources' => [
-                    'file_search' => [
-                        'vector_store_ids' => [$vectorStoreId]
-                    ]
-                ]
-            ]);
-
-            if ($response->failed()) {
-                throw new Exception("Assistant creation failed: " . $response->body());
-            }
-
-            $this->assistantId = $response->json('id');
-            Log::info("Assistant created successfully with ID: {$this->assistantId}");
-        } catch (Exception $e) {
-            Log::error("Error creating assistant: " . $e->getMessage());
-            throw new Exception("Failed to create assistant: " . $e->getMessage());
-        }
-    }
-
-    protected function createVectorStoreWithFile()
-    {
-        // Create vector store
-        $response = Http::withHeaders([
-            'Authorization' => "Bearer {$this->apiKey}",
-            'Content-Type' => 'application/json',
-            'OpenAI-Beta' => 'assistants=v2'
-        ])->post("{$this->baseUrl}/vector_stores", [
-            'name' => 'Shopify Orders Vector Store',
-            'file_ids' => [$this->fileId]
-        ]);
-
-        if ($response->failed()) {
-            throw new Exception("Vector store creation failed: " . $response->body());
-        }
-
-        return $response->json('id');
-    }
-
-    /**
      * Ask a question about the Shopify orders
      *
      * @param string $question The question to ask
@@ -318,22 +501,8 @@ class ShopifyOrderAnalyst
         }
 
         try {
-            // Create a new thread or use existing one
-            if (empty($this->threadId)) {
-                $response = Http::withHeaders([
-                    'Authorization' => "Bearer {$this->apiKey}",
-                    'Content-Type' => 'application/json',
-                    'OpenAI-Beta' => 'assistants=v2',
-                ])
-                    ->post("{$this->baseUrl}/threads");
-
-                if ($response->failed()) {
-                    throw new Exception("Failed to create thread: " . $response->body());
-                }
-
-                $this->threadId = $response->json('id');
-                $this->saveToCache();
-            }
+            // Ensure thread exists
+            $this->createThreadIfNeeded();
 
             // Add the message to the thread
             $response = Http::withHeaders([
@@ -358,7 +527,7 @@ class ShopifyOrderAnalyst
             ])
                 ->post("{$this->baseUrl}/threads/{$this->threadId}/runs", [
                     'assistant_id' => $this->assistantId,
-                    'instructions' => 'Format response with markdown tables or charts when applicable. Be concise but thorough.'
+                    'instructions' => 'Use code interpreter to analyze the CSV files. Format response with markdown tables or charts when applicable.'
                 ]);
 
             if ($response->failed()) {
@@ -444,6 +613,9 @@ class ShopifyOrderAnalyst
             foreach ($data['data'][0]['content'] as $content) {
                 if ($content['type'] === 'text') {
                     $responseContent .= $content['text']['value'] . "\n";
+                } elseif ($content['type'] === 'image') {
+                    // Handle image content if needed
+                    $responseContent .= "[Image attachment available]\n";
                 }
             }
 
@@ -491,9 +663,35 @@ class ShopifyOrderAnalyst
     }
 
     /**
-     * Clean up resources created by this service
+     * Get current file ID
      */
-    public function cleanup()
+    public function getFileId()
+    {
+        return $this->fileId;
+    }
+
+    /**
+     * Get current assistant ID
+     */
+    public function getAssistantId()
+    {
+        return $this->assistantId;
+    }
+
+    /**
+     * Get current thread ID
+     */
+    public function getThreadId()
+    {
+        return $this->threadId;
+    }
+
+    /**
+     * Clean up resources created by this service
+     * 
+     * @param bool $removeFromDatabase Whether to remove from database
+     */
+    public function cleanup($removeFromDatabase = false)
     {
         try {
             if (!empty($this->fileId)) {
@@ -510,6 +708,14 @@ class ShopifyOrderAnalyst
                     'OpenAI-Beta' => 'assistants=v2',
                 ])
                     ->delete("{$this->baseUrl}/assistants/{$this->assistantId}");
+            }
+
+            // Remove from database if requested
+            if ($removeFromDatabase) {
+                DB::table('ai_assistants')
+                    ->where('file_id', $this->fileId)
+                    ->where('assistant_id', $this->assistantId)
+                    ->delete();
             }
 
             $this->fileId = null;

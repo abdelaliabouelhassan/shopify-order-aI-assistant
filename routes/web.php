@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AiAssistantController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProfileController;
@@ -28,11 +29,13 @@ Route::middleware('auth')->group(function () {
 });
 
 
-Route::get('/testing', function () {
-    $analyst = new ShopifyOrderAnalyst();
-    $response =  $analyst->ask("how many 'use' you it been used in the php file we gived you ? ");
-    return $response;
-});
+Route::get('/setup-ai', [AiAssistantController::class, 'setupAssistant']);
+Route::get('/update-ai', [AiAssistantController::class, 'updateKnowledge']);
+Route::get('/ask', [AiAssistantController::class, 'askQuestion']);
+Route::get('/export', [AiAssistantController::class, 'export']);
+
+
+
 
 
 require __DIR__ . '/auth.php';

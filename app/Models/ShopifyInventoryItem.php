@@ -9,4 +9,9 @@ class ShopifyInventoryItem extends Model
     //
 
     protected $guarded = [];
+
+    public function inventoryLevels()
+    {
+        return $this->hasMany(ShopifyInventoryLevel::class, 'inventory_item_id', 'inventory_item_id');
+    }
 }
