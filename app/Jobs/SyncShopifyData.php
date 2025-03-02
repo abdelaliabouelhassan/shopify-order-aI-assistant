@@ -79,7 +79,7 @@ class SyncShopifyData implements ShouldQueue
     private function syncRecentOrders(ShopifyService $shopifyService)
     {
         Log::info('Syncing recent orders...');
-        $result = $shopifyService->syncRecentOrders(2); // Last 2 days
+        $result = $shopifyService->syncRecentOrders(1); // Last 1 days
         $this->outputResult('Recent orders', $result);
     }
 
