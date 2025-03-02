@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Services\ShopifyService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
