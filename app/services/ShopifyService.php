@@ -295,6 +295,8 @@ class ShopifyService
      */
     private function getInventoryItemDetails($inventoryItemIds)
     {
+
+        Log::info('testing', [$inventoryItemIds]);
         $allItems = [];
 
         // Process in batches of 50 to avoid URL length limits
@@ -302,6 +304,7 @@ class ShopifyService
 
         foreach ($chunks as $chunk) {
             $ids = implode(',', $chunk);
+            Log::alert('test one');
             $url = "{$this->baseUrl}/inventory_items.json?ids={$ids}";
 
             $response = Http::withHeaders([
@@ -321,7 +324,7 @@ class ShopifyService
             // Avoid rate limits
             usleep(500000); // 500ms delay
         }
-
+        Log::alert('final test one', [$allItems]);
         return $allItems;
     }
 
