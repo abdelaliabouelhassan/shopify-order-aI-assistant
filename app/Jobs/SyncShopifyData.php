@@ -46,6 +46,7 @@ class SyncShopifyData implements ShouldQueue
                 $this->syncInventory($shopifyService);
                 break;
             case 'recent':
+                Log::alert('recent start');
                 $this->syncRecentOrders($shopifyService);
                 $this->syncInventory($shopifyService);
                 break;
