@@ -28,7 +28,7 @@ Route::middleware('auth')->group(function () {
 });
 
 
-Route::get('/setup-ai', [AiAssistantController::class, 'setupAssistant']);
+// Route::get('/setup-ai', [AiAssistantController::class, 'setupAssistant']);
 // Route::get('/update-ai', [AiAssistantController::class, 'updateKnowledge']);
 // Route::get('/ask', [AiAssistantController::class, 'askQuestion']);
 
