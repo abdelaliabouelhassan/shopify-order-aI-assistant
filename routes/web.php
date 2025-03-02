@@ -1,6 +1,12 @@
 <?php
 
+use App\Http\Controllers\AiAssistantController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\ProfileController;
+use App\Services\ShopifyOrderAnalyst;
+use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
