@@ -47,6 +47,7 @@ class SyncShopifyData implements ShouldQueue
                 break;
             case 'recent':
                 $this->syncRecentOrders($shopifyService);
+                $this->syncInventory($shopifyService);
                 break;
             default:
                 Log::error("Unknown sync type: {$this->syncType}");
@@ -73,6 +74,7 @@ class SyncShopifyData implements ShouldQueue
         $result = $shopifyService->getAllInventory();
         $this->outputResult('Inventory', $result);
     }
+
 
     private function syncRecentOrders(ShopifyService $shopifyService)
     {
