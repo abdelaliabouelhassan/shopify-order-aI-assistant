@@ -47,7 +47,7 @@ class SyncShopifyData implements ShouldQueue
                 break;
             case 'recent':
                 Log::alert('recent start');
-                // $this->syncRecentOrders($shopifyService);
+                $this->syncRecentOrders($shopifyService);
                 $this->syncInventory($shopifyService);
                 break;
             default:
