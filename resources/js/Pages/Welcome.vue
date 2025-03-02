@@ -113,10 +113,7 @@
         <div class="flex-1 overflow-y-auto px-4 py-6" ref="chatContainer">
           <div class="max-w-3xl mx-auto space-y-6">
             <!-- Welcome Message (only shown in a new empty chat) -->
-            <div
-              v-if="currentMessages.length === 0"
-              class="flex items-start space-x-4"
-            >
+            <div class="flex items-start space-x-4">
               <div
                 class="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0"
               >
