@@ -296,7 +296,7 @@ class ShopifyOrderAnalyst
                 - Identify trending products.
                 - Flag delayed orders.
                 When creating visualizations, use appropriate charts for the data.",
-                'model' => 'gpt-4-turbo',
+                'model' => 'gpt-4o',
                 'tools' => [
                     ['type' => 'code_interpreter']
                 ],
