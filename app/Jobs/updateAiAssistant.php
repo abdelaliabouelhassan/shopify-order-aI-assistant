@@ -42,7 +42,7 @@ class updateAiAssistant implements ShouldQueue
             );
 
             // Update with new knowledge file
-            $analyst->updateKnowledge([$filePath1, $filePath2], true);
+            $analyst->updateKnowledge([$filePath1, $filePath2]);
         }
 
         // Initialize with existing IDs
