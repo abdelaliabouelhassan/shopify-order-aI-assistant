@@ -166,7 +166,7 @@
 
               <!-- Message Bubble -->
               <div
-                class="px-6 py-4 rounded-lg shadow-sm max-w-xl"
+                class="px-6 py-4 rounded-lg shadow-sm max-w-xl overflow-x-auto"
                 :class="
                   message.sender_type === 'user'
                     ? 'bg-indigo-600 text-white'
