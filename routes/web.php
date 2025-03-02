@@ -8,6 +8,7 @@ use App\Services\ShopifyOrderAnalyst;
 use App\Services\ShopifyService;
 use App\Services\ShopifyToOpenAIService;
 use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -29,11 +30,9 @@ Route::middleware('auth')->group(function () {
 });
 
 
-Route::get('/setup-ai', [AiAssistantController::class, 'setupAssistant']);
-Route::get('/update-ai', [AiAssistantController::class, 'updateKnowledge']);
-Route::get('/ask', [AiAssistantController::class, 'askQuestion']);
-Route::get('/export', [AiAssistantController::class, 'export']);
-
+// Route::get('/setup-ai', [AiAssistantController::class, 'setupAssistant']);
+// Route::get('/update-ai', [AiAssistantController::class, 'updateKnowledge']);
+// Route::get('/ask', [AiAssistantController::class, 'askQuestion']);
 
 
 
