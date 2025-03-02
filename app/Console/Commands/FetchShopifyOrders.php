@@ -7,6 +7,7 @@ use Illuminate\Console\Command;
 
 class FetchShopifyOrders extends Command
 {
+
     protected $signature = 'shopify:sync {type=all : The type of sync to run (all, orders, inventory, recent)}';
     protected $description = 'Sync data from Shopify to local database';
 
