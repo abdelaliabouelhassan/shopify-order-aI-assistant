@@ -19,7 +19,7 @@ return new class extends Migration
             $table->timestamp('synced_at');
 
             // Indexes
-            $table->unique(['inventory_item_id', 'location_id']);
+            $table->unique(['inventory_item_id']);
             $table->index('inventory_item_id');
         });
     }
