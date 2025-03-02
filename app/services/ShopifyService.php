@@ -239,6 +239,22 @@ class ShopifyService
         try {
             $variants = $this->getAllProductVariants();
             $totalProcessed = 0;
+            $inventoryItemIds = [];
+
+            // Extract inventory_item_ids from variants
+            foreach ($variants as $variant) {
+                if (isset($variant['inventory_item_id'])) {
+                    $inventoryItemIds[] = $variant['inventory_item_id'];
+                }
+            }
+
+            // Get inventory item details in batches
+            $inventoryItems = $this->getInventoryItemDetails($inventoryItemIds);
+
+            // Save inventory items
+            if (!empty($inventoryItems)) {
+                $this->saveInventoryBatch($inventoryItems);
+            }
 
             DB::beginTransaction();
 
@@ -262,7 +278,7 @@ class ShopifyService
             return [
                 'success' => true,
                 'count' => $totalProcessed,
-                'message' => "Synced $totalProcessed inventory levels from variants"
+                'message' => "Synced $totalProcessed inventory levels and " . count($inventoryItems) . " inventory items"
             ];
         } catch (\Exception $e) {
             DB::rollBack();
@@ -272,6 +288,41 @@ class ShopifyService
                 'message' => "Error: " . $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Get inventory item details from Shopify
+     */
+    private function getInventoryItemDetails($inventoryItemIds)
+    {
+        $allItems = [];
+
+        // Process in batches of 50 to avoid URL length limits
+        $chunks = array_chunk($inventoryItemIds, 50);
+
+        foreach ($chunks as $chunk) {
+            $ids = implode(',', $chunk);
+            $url = "{$this->baseUrl}/inventory_items.json?ids={$ids}";
+
+            $response = Http::withHeaders([
+                'X-Shopify-Access-Token' => $this->accessToken
+            ])->get($url);
+
+            if (!$response->successful()) {
+                Log::error("Failed to fetch inventory items: " . $response->body());
+                continue;
+            }
+
+            $data = $response->json();
+            if (isset($data['inventory_items']) && is_array($data['inventory_items'])) {
+                $allItems = array_merge($allItems, $data['inventory_items']);
+            }
+
+            // Avoid rate limits
+            usleep(500000); // 500ms delay
+        }
+
+        return $allItems;
     }
 
     /**

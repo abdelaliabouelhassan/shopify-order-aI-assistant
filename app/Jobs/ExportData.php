@@ -158,7 +158,7 @@ class ExportData implements ShouldQueue
 
         fclose($productsFile);
 
-        Artisan::call('shopify:update-ai');
+        //  Artisan::call('shopify:update-ai');
 
         // return response()->json([
         //     'success' => true,
