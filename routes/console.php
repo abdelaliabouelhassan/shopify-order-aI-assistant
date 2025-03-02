@@ -10,5 +10,5 @@ Artisan::command('inspire', function () {
 
 
 
-Schedule::command('shopify:sync recent')->dailyAt('00:00');
-Schedule::command('shopify:export')->dailyAt('02:00');
+Schedule::command('shopify:sync recent')->hourly();
+Schedule::command('shopify:export')->cron('*/75 * * * *');
