@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Services\OpenAIService;
+use App\Services\ShopifyOrderAnalyst;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -93,7 +94,8 @@ class ChatController extends Controller
             'content' => 'required|string',
         ]);
 
-        $answer = (new OpenAIService())->askAboutOrders($request->content);
+        //  $answer = (new OpenAIService())->askAboutOrders($request->content);
+        $answer = (new ShopifyOrderAnalyst())->ask($request->content);
 
         $conversation = Conversation::where('id', $conversationId)
             ->where('user_id', Auth::id())
