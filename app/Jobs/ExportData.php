@@ -54,6 +54,7 @@ class ExportData implements ShouldQueue
         ShopifyOrder::chunk(100, function ($orders) use ($ordersFile) {
             foreach ($orders as $order) {
                 $order->load('orderItems');
+                $shippingAddress = json_decode($order->shipping_address, true);
 
                 // Extract base order data
                 $baseOrderData = [
@@ -66,11 +67,12 @@ class ExportData implements ShouldQueue
                     (float)$order->total_price,
                     (float)$order->total_tax,
                     $order->tags ?: '',
-                    $order->shipping_address['province'] ?? '',
-                    $order->shipping_address['province_code'] ?? '',
-                    $order->shipping_address['city'] ?? '',
-                    $order->shipping_address['zip'] ?? '',
-                    $order->shipping_address['address1'] ?? '',
+                    $shippingAddress['province'] ?? '',
+                    $shippingAddress['province_code'] ?? '',
+                    $shippingAddress['city'] ?? '',
+                    $shippingAddress['zip'] ?? '',
+                    $shippingAddress['address1'] ?? '',
+
                 ];
 
                 // If no items, write just the order
