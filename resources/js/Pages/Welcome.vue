@@ -323,7 +323,7 @@ const currentConversationId = ref(null);
 const currentMessages = ref([]);
 const newMessage = ref("");
 const isTyping = ref(false);
-const showHistory = ref(true);
+const showHistory = ref(false);
 const showClearConfirm = ref(false);
 const chatContainer = ref(null);
 const newMessageContainer = ref("");
@@ -354,7 +354,7 @@ const loadConversation = async (id) => {
     currentConversationId.value = id;
     const response = await axios.get(`/conversations/${id}`);
     currentMessages.value = response.data.messages || [];
-
+    showHistory.value = false;
     // Scroll to bottom after messages are loaded
     nextTick(() => {
       scrollToBottom();
@@ -375,6 +375,7 @@ const startNewChat = async () => {
     conversations.value.unshift(newConversation);
     currentConversationId.value = newConversation.id;
     currentMessages.value = [];
+    showHistory.value = false;
   } catch (error) {
     console.error("Error creating new conversation:", error);
   }
