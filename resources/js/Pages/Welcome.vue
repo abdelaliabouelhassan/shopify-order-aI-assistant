@@ -49,9 +49,9 @@
       <!-- Chat History Sidebar -->
       <div
         v-if="showHistory"
-        class="w-64 bg-white border-r border-gray-200 flex flex-col"
+        class="w-64 bg-white border-r absolute left-0 top-0 h-full border-gray-200 flex flex-col"
       >
-        <div class="p-4 border-b border-gray-200">
+        <div class="pt-4 px-4 pb-6 border-b border-gray-200">
           <h2 class="font-medium text-gray-700">Chat History</h2>
         </div>
         <div class="flex-1 overflow-y-auto p-2">
